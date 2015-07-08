@@ -193,14 +193,17 @@ func (e *Email) Bytes() ([]byte, error) {
 
 // Send an email using the given host and SMTP auth (optional), returns any error thrown by smtp.SendMail
 // This function merges the To, Cc, and Bcc fields and calls the smtp.SendMail function using the Email.Bytes() output as the message
-func (e *Email) Send(addr string, a smtp.Auth) error {
+func (e *Email) SendXD(addr string, a smtp.Auth) error {
 	// Merge the To, Cc, and Bcc fields
 	to := make([]string, 0, len(e.To)+len(e.Cc)+len(e.Bcc))
 	to = append(append(append(to, e.To...), e.Cc...), e.Bcc...)
 	for i := 0; i < len(to); i++ {
 		addr, err := mail.ParseAddress(to[i])
 		if err != nil {
-			return err
+			from, err = mail.ParseAddress(stripNameForEmailValidation(e.From))
+			if err != nil {
+				return err
+			}
 		}
 		to[i] = addr.Address
 	}
@@ -210,7 +213,10 @@ func (e *Email) Send(addr string, a smtp.Auth) error {
 	}
 	from, err := mail.ParseAddress(e.From)
 	if err != nil {
-		return err
+		from, err = mail.ParseAddress(stripNameForEmailValidation(e.From))
+		if err != nil {
+			return err
+		}
 	}
 	raw, err := e.Bytes()
 	if err != nil {
@@ -225,6 +231,14 @@ type Attachment struct {
 	Filename string
 	Header   textproto.MIMEHeader
 	Content  []byte
+}
+
+func stripNameForEmailValidation(address string) string {
+	results := regexp.MustCompile(`.*?<(.*?)>`).FindAllStringSubmatch(address, -1)
+	if len(results) == 0 || len(results[0]) == 0 {
+		return address
+	}
+	return results[0][1]
 }
 
 // quotePrintEncode writes the quoted-printable text to the IO Writer (according to RFC 2045)
