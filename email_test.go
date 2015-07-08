@@ -94,11 +94,23 @@ func TestEmailTextHtmlAttachment(t *testing.T) {
 	// Check attachments.
 	_, err = mixed.NextPart()
 	if err != nil {
-		t.Fatalf("Could not find attachemnt compoenent of email: ", err)
+		t.Fatalf("Could not find attachment compoenent of email: ", err)
 	}
 
 	if _, err = mixed.NextPart(); err != io.EOF {
 		t.Error("Expected only text and one attachement!")
+	}
+
+}
+
+func Test_ExtractEmail(t *testing.T) {
+	email, err := extractEmail("Aolan Öber <test@test.com>")
+	if err != nil {
+		t.Fatalf("Expected err to be nil", err)
+	}
+
+	if email != "test@test.com" {
+		t.Fatalf("Expected email to be test@test.com", email)
 	}
 
 }

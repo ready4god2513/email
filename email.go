@@ -15,9 +15,9 @@ import (
 	"net/textproto"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
-	"regexp"
 )
 
 const (
@@ -199,31 +199,27 @@ func (e *Email) Send(addr string, a smtp.Auth) error {
 	to := make([]string, 0, len(e.To)+len(e.Cc)+len(e.Bcc))
 	to = append(append(append(to, e.To...), e.Cc...), e.Bcc...)
 	for i := 0; i < len(to); i++ {
-		addr, err := mail.ParseAddress(to[i])
+		addr, err := extractEmail(to[i])
 		if err != nil {
-			addr, err = mail.ParseAddress(stripNameForEmailValidation(to[i]))
-			if err != nil {
-				return err
-			}
+			return err
 		}
-		to[i] = addr.Address
+		to[i] = addr
 	}
 	// Check to make sure there is at least one recipient and one "From" address
 	if e.From == "" || len(to) == 0 {
 		return errors.New("Must specify at least one From address and one To address")
 	}
-	from, err := mail.ParseAddress(e.From)
+
+	from, err := extractEmail(e.From)
 	if err != nil {
-		from, err = mail.ParseAddress(stripNameForEmailValidation(e.From))
-		if err != nil {
-			return err
-		}
+		return err
 	}
+
 	raw, err := e.Bytes()
 	if err != nil {
 		return err
 	}
-	return smtp.SendMail(addr, a, from.Address, to, raw)
+	return smtp.SendMail(addr, a, from, to, raw)
 }
 
 // Attachment is a struct representing an email attachment.
@@ -232,6 +228,18 @@ type Attachment struct {
 	Filename string
 	Header   textproto.MIMEHeader
 	Content  []byte
+}
+
+func extractEmail(addrStr string) (from string, err error) {
+	addr, err := mail.ParseAddress(addrStr)
+	if err != nil {
+		addr, err = mail.ParseAddress(stripNameForEmailValidation(addrStr))
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return addr.Address, nil
 }
 
 func stripNameForEmailValidation(address string) string {
