@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"regexp"
 )
 
 const (
@@ -193,14 +194,14 @@ func (e *Email) Bytes() ([]byte, error) {
 
 // Send an email using the given host and SMTP auth (optional), returns any error thrown by smtp.SendMail
 // This function merges the To, Cc, and Bcc fields and calls the smtp.SendMail function using the Email.Bytes() output as the message
-func (e *Email) SendXD(addr string, a smtp.Auth) error {
+func (e *Email) Send(addr string, a smtp.Auth) error {
 	// Merge the To, Cc, and Bcc fields
 	to := make([]string, 0, len(e.To)+len(e.Cc)+len(e.Bcc))
 	to = append(append(append(to, e.To...), e.Cc...), e.Bcc...)
 	for i := 0; i < len(to); i++ {
 		addr, err := mail.ParseAddress(to[i])
 		if err != nil {
-			from, err = mail.ParseAddress(stripNameForEmailValidation(e.From))
+			addr, err = mail.ParseAddress(stripNameForEmailValidation(to[i]))
 			if err != nil {
 				return err
 			}
